@@ -1,0 +1,43 @@
+paths:
+  raw_file: "data/raw/Data_VNINDEX.csv"
+  processed_dir: "data/processed"
+  models_dir: "models"
+  figures_dir: "logs/figures"
+  processed_subdirs:
+    core: "core"
+    quality: "quality"
+    splits: "splits"
+    stationarity: "stationarity"
+    pca: "pca"
+
+columns:
+  date: "Ngày"
+  symbol: "Symbol"
+  close: "Lần cuối"
+  open: "Mở"
+  high: "Cao"
+  low: "Thấp"
+  volume: "KL"
+  pct_change: "% Thay đổi"
+  numeric:
+    - "Lần cuối"
+    - "Mở"
+    - "Cao"
+    - "Thấp"
+    - "KL"
+
+preprocess:
+  remove_weekends: true
+  outlier_k: 1.5
+  missing_threshold: 0.2
+  train_ratio: 0.7
+  val_ratio: 0.15
+  stationarity_sample_size: 30
+  stationarity_after_diff_sample_size: 10
+
+pca:
+  explained_variance_threshold: 0.95
+  random_state: 42
+  sector_mapping_file: "data/raw/symbol_sector_mapping.csv"
+  sector_top_pcs: 10
+  sector_top_symbols: 20
