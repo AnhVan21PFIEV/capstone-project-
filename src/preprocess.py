@@ -100,7 +100,11 @@ def preprocess_pipeline(project_root: Path, config_path: Path) -> None:
 
     # ── 2. Clean & separate VNINDEX ──────────────────────────────
     stocks_df, vnindex_series = clean_and_separate(
-        df, cols, remove_weekends=prep.get("remove_weekends", True)
+        df,
+        cols,
+        start_date=prep.get("start_date"),
+        end_date=prep.get("end_date"),
+        remove_weekends=prep.get("remove_weekends", True),
     )
 
     # Save VNINDEX target artifact

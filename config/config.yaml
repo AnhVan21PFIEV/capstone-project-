@@ -27,6 +27,8 @@ columns:
     - "KL"
 
 preprocess:
+  start_date: "2022-01-01"
+  end_date: "2025-04-30"
   remove_weekends: true
   outlier_k: 1.5
   missing_threshold: 0.2

@@ -10,6 +10,8 @@ from helpers.utils import parse_percent_to_float, safe_make_columns_numeric
 def clean_and_separate(
     df: pd.DataFrame,
     cols: Dict[str, Any],
+    start_date: str | None = None,
+    end_date: str | None = None,
     remove_weekends: bool = True,
 ) -> Tuple[pd.DataFrame, pd.Series]:
     """
@@ -31,6 +33,22 @@ def clean_and_separate(
     df = safe_make_columns_numeric(df, cols["numeric"])
     if pct_col in df.columns:
         df[pct_col] = parse_percent_to_float(df[pct_col])
+
+    if start_date or end_date:
+        start_ts = pd.to_datetime(start_date) if start_date else None
+        end_ts = pd.to_datetime(end_date) if end_date else None
+        n_before = len(df)
+        if start_ts is not None:
+            df = df[df[date_col] >= start_ts]
+        if end_ts is not None:
+            df = df[df[date_col] <= end_ts]
+        n_removed = n_before - len(df)
+        print(
+            "[DATE FILTER] "
+            f"Range={start_ts.date() if start_ts is not None else 'MIN'} -> "
+            f"{end_ts.date() if end_ts is not None else 'MAX'} | "
+            f"Removed {n_removed:,} rows"
+        )
 
     df = df.sort_values(date_col).reset_index(drop=True)
 
