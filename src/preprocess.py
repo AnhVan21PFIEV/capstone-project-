@@ -1,7 +1,7 @@
 """
 preprocess.py  –  VN-Index Preprocessing Pipeline
 ====================================================
-Chạy: python src/preprocess.py --config config/config.yaml
+Chạy: python src/run_all.py --config config/config.yaml
 
 Output artifacts (mỗi bước lưu riêng):
   data/processed/
@@ -241,7 +241,7 @@ def preprocess_pipeline(project_root: Path, config_path: Path) -> None:
     ]
     for name, desc in artifacts:
         print(f"  ✅ {name:<40} {desc}")
-    print(f"\n➡️  Bước tiếp theo: python src/pca_model.py --config config/config.yaml")
+    print(f"\n  Bước tiếp theo: python src/pca_model.py --config config/config.yaml")
 
 
 # ─────────────────────────────────────────────────────────────────

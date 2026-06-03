@@ -414,6 +414,18 @@ def run_pca_pipeline(project_root: Path, config_path: Path) -> None:
         columns=pc_cols,
     )
     loadings.to_csv(pca_dir / "pca_loadings.csv")
+    
+    eigenvalues = pd.DataFrame(
+        {
+            "PC": pc_cols,
+            "eigenvalue": pca_final.explained_variance_,
+            "explained_variance_ratio": pca_final.explained_variance_ratio_,
+            "explained_variance_pct": pca_final.explained_variance_ratio_ * 100,
+            "cumulative_variance_pct": np.cumsum(pca_final.explained_variance_ratio_) * 100,
+        }
+    )
+    eigenvalues.to_csv(pca_dir / "pca_eigenvalues.csv", index=False)
+    print("[SAVED] pca_eigenvalues.csv")
 
     summarize_pc_by_sector(
         loadings=loadings,
