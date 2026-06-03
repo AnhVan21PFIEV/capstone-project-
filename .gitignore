@@ -50,3 +50,5 @@ logs/
 # Virtual environments
 .venv
 venv/
+
+*.pkl
