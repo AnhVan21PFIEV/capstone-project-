@@ -8,7 +8,7 @@ from .common import diagnostics_from_residuals, mape, paired_valid, rmse
 
 
 def run(context: dict) -> dict:
-    selected_pair = context.get("SELECTED_PAIR", (2, 0))
+    selected_pair = context.get("SELECTED_PAIR", (5, 2))
     if selected_pair not in context["ardl_results_by_pair"]:
         raise KeyError(f"Selected pair {selected_pair} was not fit successfully in the sweep.")
 

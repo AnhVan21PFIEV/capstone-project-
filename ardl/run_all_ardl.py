@@ -12,6 +12,7 @@ from step.step_01_setup import run as step_01_setup
 from step.step_02_find_project_root import run as step_02_find_project_root
 from step.step_03_load_data import run as step_03_load_data
 from step.step_04_validate_pca import run as step_04_validate_pca
+from step.step_04a_adf_stationarity_test import run as step_04a_adf_stationarity_test
 from step.step_05_sweep_ardl import run as step_05_sweep_ardl
 from step.step_06_select_and_forecast import run as step_06_select_and_forecast
 from step.step_07_export_pkl import run as step_07_export_pkl
@@ -20,13 +21,14 @@ from step.step_09_plot import run as step_09_plot
 
 
 def main() -> dict:
-    context = {"SELECTED_PAIR": (2, 0)}
+    context = {"SELECTED_PAIR": (5, 2)}
 
     for step in [
         step_01_setup,
         step_02_find_project_root,
         step_03_load_data,
         step_04_validate_pca,
+        step_04a_adf_stationarity_test,
         step_05_sweep_ardl,
         step_06_select_and_forecast,
         step_07_export_pkl,
