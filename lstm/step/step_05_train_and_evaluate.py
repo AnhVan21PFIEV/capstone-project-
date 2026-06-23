@@ -1,7 +1,9 @@
 """Step 05: Train and evaluate LSTM models."""
 import random
 import numpy as np
+import pandas as pd
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from step_02_paths import PROJECT_ROOT

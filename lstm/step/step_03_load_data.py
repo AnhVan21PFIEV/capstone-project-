@@ -1,11 +1,13 @@
 """Step 03: Load PCA features and VNINDEX target."""
 from step_02_paths import PCA_DIR, CORE_DIR
+import pandas as pd
+
 
 # Load PCA features and VNINDEX target
-train_pca = pd.read_csv(PCA_DIR / "train_pca.csv", parse_dates=["NgĂ y"]).set_index("NgĂ y")
-val_pca = pd.read_csv(PCA_DIR / "val_pca.csv", parse_dates=["NgĂ y"]).set_index("NgĂ y")
-test_pca = pd.read_csv(PCA_DIR / "test_pca.csv", parse_dates=["NgĂ y"]).set_index("NgĂ y")
-vnindex = pd.read_csv(CORE_DIR / "vnindex_target.csv", parse_dates=["NgĂ y"]).set_index("NgĂ y")
+train_pca = pd.read_csv(PCA_DIR / "train_pca.csv", parse_dates=["Ngày"]).set_index("Ngày")
+val_pca = pd.read_csv(PCA_DIR / "val_pca.csv", parse_dates=["Ngày"]).set_index("Ngày")
+test_pca = pd.read_csv(PCA_DIR / "test_pca.csv", parse_dates=["Ngày"]).set_index("Ngày")
+vnindex = pd.read_csv(CORE_DIR / "vnindex_target.csv", parse_dates=["Ngày"]).set_index("Ngày")
 
 train_df = train_pca.join(vnindex, how="inner")
 val_df = val_pca.join(vnindex, how="inner")
