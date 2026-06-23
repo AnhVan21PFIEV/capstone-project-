@@ -51,13 +51,17 @@ def run(context: dict) -> dict:
         "nobs": int(adf_diff1[3]),
     }
 
-    print(f"  Level: ADF={adf_level[0]:.6f}, p-value={adf_level[1]:.6f}")
+    # Print results for target variable
+    print(f"  ADF (mức gốc): {adf_level[0]:.6f}")
+    print(f"  p-value (mức gốc): {adf_level[1]:.6f}")
+    print(f"  ADF (sai phân bậc 1): {adf_diff1[0]:.6f}")
+    print(f"  p-value (Δ): {adf_diff1[1]:.6f}")
+
     if adf_level[1] < 0.05:
         print(f"    → {target_col} is I(0) (stationary at level)")
     else:
         print(f"    → {target_col} is I(1) (NOT stationary at level)")
         
-    print(f"  Diff1: ADF={adf_diff1[0]:.6f}, p-value={adf_diff1[1]:.6f}")
     if adf_diff1[1] < 0.05:
         print(f"    → {target_col} is I(0) after differencing (becomes stationary)")
 
@@ -74,9 +78,14 @@ def run(context: dict) -> dict:
             "nobs": int(adf_level[3]),
         }
         
+        # Print results for each PC
+        print(f"\n  {pc_col}:")
+        print(f"    ADF (mức gốc): {adf_level[0]:.6f}")
+        print(f"    p-value (mức gốc): {adf_level[1]:.6f}")
+        
         # Check if stationary at level
         if adf_level[1] < 0.05:
-            print(f"  {pc_col}: I(0) at level (ADF={adf_level[0]:.6f}, p={adf_level[1]:.6f})")
+            print(f"    → {pc_col} is I(0) (stationary at level)")
         else:
             # Test first difference
             x_diff1 = x_level.diff().dropna()
@@ -87,7 +96,9 @@ def run(context: dict) -> dict:
                 "usedlag": int(adf_diff1[2]),
                 "nobs": int(adf_diff1[3]),
             }
-            print(f"  {pc_col}: I(1) at level, I(0) after diff (ADF={adf_diff1[0]:.6f}, p={adf_diff1[1]:.6f})")
+            print(f"    ADF (sai phân bậc 1): {adf_diff1[0]:.6f}")
+            print(f"    p-value (Δ): {adf_diff1[1]:.6f}")
+            print(f"    → {pc_col} is I(1) at level, I(0) after differencing")
 
     # Summary statistics
     print("\n" + "-" * 80)
