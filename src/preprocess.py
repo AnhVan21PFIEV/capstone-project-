@@ -53,6 +53,8 @@ from preprocess_steps import (
     run_log_return_adf,
     run_stationarity_checks,
     save_preprocess_figure,
+    save_correlation_heatmap_full,
+    save_distribution_figure,
 )
 
 
@@ -76,7 +78,7 @@ def preprocess_pipeline(project_root: Path, config_path: Path) -> None:
     raw_path      = project_root / paths["raw_file"]
     processed_dir = project_root / paths["processed_dir"]
     models_dir    = project_root / paths["models_dir"]
-    figures_dir   = project_root / paths.get("figures_dir", "logs/figures")
+    figures_dir   = project_root / paths.get("figures_dir", "logs/figures/pca")
 
     subdirs = paths.get("processed_subdirs", {})
     core_dir = processed_dir / subdirs.get("core", "core")
@@ -206,7 +208,7 @@ def preprocess_pipeline(project_root: Path, config_path: Path) -> None:
         stationarity_dir / "stationarity_logreturn.csv",
     )
 
-    # ── 12. Figures ───────────────────────────────────────────────
+  # ── 12. Figures ───────────────────────────────────────────────
     save_preprocess_figure(
         figures_dir=figures_dir,
         vnindex_series=vnindex_series,
@@ -217,6 +219,49 @@ def preprocess_pipeline(project_root: Path, config_path: Path) -> None:
         corr_summary=corr_summary,
         n_train=n_train,
         n_val=n_val,
+        subfolder="",
+    )
+
+    # ── 12b. Boxplot IQR comparison  ──────────────────
+    try:
+        from preprocess_steps import save_boxplot_iqr_comparison
+        save_boxplot_iqr_comparison(
+            figures_dir=figures_dir,
+            stocks_df=stocks_df,
+            stocks_clean=stocks_clean,
+            symbol_col=cols["symbol"],
+            close_col=cols["close"],
+            n_stocks=5,
+        )
+    except Exception as e:
+        print(f'[WARN] save_boxplot_iqr_comparison failed: {e}')
+
+    # ── 12c. Missing heatmap  ─────────────────────────
+    try:
+        from preprocess_steps import save_missing_heatmap
+        save_missing_heatmap(
+            figures_dir=figures_dir,
+            df_pivot=df_pivot,
+            max_stocks=100,
+        )
+    except Exception as e:
+        print(f'[WARN] save_missing_heatmap failed: {e}')
+
+    # ── 12d. Heatmap riêng  ──────────────────
+    save_correlation_heatmap_full(
+        figures_dir=figures_dir,
+        df_pivot=df_pivot,
+        n_stocks=30,
+        save_csv=True,
+        random_seed=42
+    )
+
+    # ── 12e. Histogram Z-score riêng  ────────
+    save_distribution_figure(
+        figures_dir=figures_dir,
+        train_scaled=train_scaled,
+        n_stocks=9,
+        random_seed=42 
     )
 
     # ── 13. Summary ───────────────────────────────────────────────

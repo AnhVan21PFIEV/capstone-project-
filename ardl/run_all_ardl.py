@@ -18,7 +18,8 @@ from step.step_06_select_and_forecast import run as step_06_select_and_forecast
 from step.step_07_export_pkl import run as step_07_export_pkl
 from step.step_08_summary import run as step_08_summary
 from step.step_09_plot import run as step_09_plot
-
+from step.step_10_ardl_80obs import run as step_10_ardl_80obs 
+from step.step_11_summary_table import run as step_11_summary_table
 
 def main() -> dict:
     context = {"SELECTED_PAIR": (5, 2)}
@@ -34,6 +35,8 @@ def main() -> dict:
         step_07_export_pkl,
         step_08_summary,
         step_09_plot,
+        step_10_ardl_80obs,
+         step_11_summary_table,
     ]:
         context = step(context)
 

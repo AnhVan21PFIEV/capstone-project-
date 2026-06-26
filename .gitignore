@@ -57,3 +57,8 @@ venv/
 models/**/*.pkl
 
 
+*.json
+ardl_vnindex_report/*.json
+readme
+vnindex_edq.py
+lstm_forecast_plot.png

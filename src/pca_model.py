@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from sklearn.decomposition import PCA
+from preprocess_steps import save_correlation_heatmap_full, save_distribution_figure
 
 
 def load_config(config_path: str | Path) -> Dict[str, Any]:
@@ -186,8 +187,16 @@ def save_pca_figure(
     test_index: pd.DatetimeIndex,
     loadings: pd.DataFrame,
     output_path: Path,
+    subfolder: str = "pca",
 ) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # ===== TẠO THƯ MỤC CON NẾU CÓ =====
+    if subfolder:
+        save_dir = output_path.parent / subfolder
+    else:
+        save_dir = output_path.parent
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
+    output_path = save_dir / "pca_summary.png"
     n = len(explained_var)
     n_show = min(50, n)
 
@@ -470,7 +479,7 @@ def run_pca_pipeline(project_root: Path, config_path: Path) -> None:
         pickle.dump(pca_final, f)
     print(f"[SAVED] pca_model.pkl")
 
-    # ── Figures ───────────────────────────────────────────────────
+        # ── Figures ───────────────────────────────────────────────────
     save_pca_figure(
         explained_var=ev,
         cum_explained_var=cev,
@@ -483,7 +492,80 @@ def run_pca_pipeline(project_root: Path, config_path: Path) -> None:
         test_index=test_scaled.index,
         loadings=loadings,
         output_path=figures_dir / "pca_summary.png",
+        subfolder="pca",
     )
+
+    # ── PCA individual figures ──────────────────────────────────
+    save_pca_individual_figures(
+        figures_dir=figures_dir,
+        loadings=loadings,
+        explained_var=ev,
+        train_pca=train_pca,
+        train_index=train_scaled.index,
+    )
+
+    save_pca_threshold_table(
+        figures_dir=figures_dir,
+        cev=cev,
+        p=p,
+    )
+    
+    # ── PCA individual figures ──────────────────────────────────
+    save_pca_individual_figures(
+        figures_dir=figures_dir,
+        loadings=loadings,
+        explained_var=ev,
+        train_pca=train_pca,
+        train_index=train_scaled.index,
+    )
+
+    save_pca_threshold_table(
+        figures_dir=figures_dir,
+        cev=cev,
+        p=p,
+    )
+
+    # ── PC Time Series riêng biệt ────────────────────
+    try:
+        from preprocess_steps import save_pc_time_series_individual
+        pc_cols_exist = [f'PC{i+1}' for i in range(min(3, k_optimal))]
+        pc_data = pd.DataFrame(
+            train_pca[:, :len(pc_cols_exist)],
+            index=train_scaled.index,
+            columns=pc_cols_exist
+        )
+        save_pc_time_series_individual(
+            figures_dir=figures_dir,
+            pc_data=pc_data,
+            pc_names=pc_cols_exist,
+        )
+    except Exception as e:
+        print(f'[WARN] save_pc_time_series_individual failed: {e}')
+
+    # ── Heatmap & Histogram ─────────────────────────────────────
+    cleaned_path = processed_dir / "core" / "cleaned_data.csv"
+    if cleaned_path.exists():
+        df_pivot = pd.read_csv(cleaned_path, index_col=0, parse_dates=True)
+        save_correlation_heatmap_full(figures_dir, df_pivot=df_pivot, n_stocks=30, save_csv=True, random_seed=42)
+        save_distribution_figure(figures_dir, train_scaled=train_scaled, n_stocks=9)
+    else:
+        print("[WARN] cleaned_data.csv not found")
+
+    # ── Walk-forward split figure ──────────────────────────────
+    split_summary_path = processed_dir / "splits" / "split_summary.csv"
+    vnindex_path = processed_dir / "core" / "vnindex_target.csv"
+    
+    if split_summary_path.exists() and vnindex_path.exists():
+        split_summary = pd.read_csv(split_summary_path)
+        vnindex_series = pd.read_csv(vnindex_path, index_col=0, parse_dates=True).squeeze()
+        try:
+            from step_11_walkforward_figure import save_walkforward_figure, save_lookback_illustration
+            save_walkforward_figure(figures_dir, split_summary, vnindex_series)
+            save_lookback_illustration(figures_dir)
+        except ImportError:
+            print("[WARN] step_11_walkforward_figure.py not found")
+    else:
+        print("[WARN] skip walkforward")
 
     # ── Final summary ─────────────────────────────────────────────
     print("\n" + "="*60)
@@ -495,6 +577,137 @@ def run_pca_pipeline(project_root: Path, config_path: Path) -> None:
     print(f"  Giảm   : {(1-k_optimal/p)*100:.1f}% số chiều")
     print(f"  Max cross-corr PC: {max_cross:.2e} (≈ 0 ✓)")
     print(f"\n  Bước tiếp theo: xây dựng ARDL + LSTM với dữ liệu train/val/test_pca.csv")
+
+
+# ─────────────────────────────────────────────────────────────────
+def save_pca_individual_figures(
+    figures_dir: Path,
+    loadings: pd.DataFrame,
+    explained_var: np.ndarray,
+    train_pca: np.ndarray,
+    train_index: pd.DatetimeIndex,
+    subfolder: str = "pca",
+) -> None:
+    """Xuất các hình riêng lẻ cho báo cáo."""
+    # ===== TẠO THƯ MỤC CON NẾU CÓ =====
+    if subfolder:
+        pca_fig_dir = figures_dir / subfolder
+    else:
+        pca_fig_dir = figures_dir
+    pca_fig_dir.mkdir(parents=True, exist_ok=True)
+    
+    pc_cols = loadings.columns.tolist()
+
+    # (A) PC1, PC2, PC3 LOADINGS
+    colors_time = ["#1565C0", "#E65100", "#2E7D32"]
+    for i, pc in enumerate(pc_cols[:3]):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        top15 = loadings[pc].abs().nlargest(15)
+        colors = ["#1565C0" if loadings.loc[s, pc] > 0 else "#C62828" for s in top15.index]
+        ax.barh(top15.index, top15.values, color=colors, edgecolor="white")
+        ax.set_xlabel("|Loading|", fontsize=11)
+        ax.set_title(f"Top 15 Loadings – {pc} ({explained_var[i]*100:.1f}% variance)", fontweight="bold", fontsize=12)
+        ax.invert_yaxis()
+        from matplotlib.patches import Patch
+        ax.legend(handles=[Patch(facecolor="#1565C0", label="Loading (+)"), Patch(facecolor="#C62828", label="Loading (–)")], fontsize=9)
+        fig.tight_layout()
+        fig.savefig(pca_fig_dir / f"loading_{pc.lower()}.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"[FIGURE] Saved -> pca/loading_{pc.lower()}.png")
+
+    # (B) PC1, PC2, PC3 theo thời gian
+    fig, axes = plt.subplots(3, 1, figsize=(14, 10))
+    for i, pc in enumerate(pc_cols[:3]):
+        ax = axes[i]
+        ax.plot(train_index, train_pca[:, i], color=colors_time[i], linewidth=1.2)
+        ax.axhline(0, color="gray", linestyle="--", linewidth=0.8, alpha=0.5)
+        ax.set_title(f"{pc} theo thời gian ({explained_var[i]*100:.1f}% phương sai)", fontweight="bold", fontsize=10)
+        ax.set_ylabel("Score")
+        ax.tick_params(axis="x", rotation=20)
+    fig.tight_layout()
+    fig.savefig(pca_fig_dir / "pc_time_series.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[FIGURE] Saved -> pca/pc_time_series.png")
+
+    # (C) Biplot PC1 vs PC2
+    fig, ax = plt.subplots(figsize=(12, 10))
+    scatter = ax.scatter(train_pca[:, 0], train_pca[:, 1], c=np.arange(len(train_pca)), cmap="viridis", alpha=0.3, s=10)
+    plt.colorbar(scatter, ax=ax, label="Thời gian (sớm→muộn)")
+    n_loadings = min(20, len(loadings))
+    loadings_subset = loadings.nlargest(n_loadings, "PC1") if n_loadings > 0 else loadings
+    scale_factor = 8
+    for idx, row in loadings_subset.iterrows():
+        ax.arrow(0, 0, row["PC1"] * scale_factor, row["PC2"] * scale_factor,
+                 head_width=0.3, head_length=0.3, fc="red", ec="red", alpha=0.5)
+        ax.text(row["PC1"] * scale_factor * 1.05, row["PC2"] * scale_factor * 1.05,
+                idx, fontsize=7, color="darkred")
+    ax.set_xlabel(f"PC1 ({explained_var[0]*100:.1f}%)", fontsize=11)
+    ax.set_ylabel(f"PC2 ({explained_var[1]*100:.1f}%)", fontsize=11)
+    ax.set_title("Biplot: PC1 vs PC2 với loading vectors (top 20)", fontweight="bold", fontsize=12)
+    ax.axhline(0, color="gray", linestyle="--", alpha=0.3)
+    ax.axvline(0, color="gray", linestyle="--", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(pca_fig_dir / "biplot_pc1_pc2.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[FIGURE] Saved -> pca/biplot_pc1_pc2.png")
+
+    # (D) Histogram PC1, PC2, PC3
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    for i, pc in enumerate(pc_cols[:3]):
+        ax = axes[i]
+        ax.hist(train_pca[:, i], bins=50, color=colors_time[i], alpha=0.7, edgecolor="white")
+        ax.axvline(0, color="red", linestyle="--", linewidth=1)
+        ax.set_title(f"{pc} - Histogram", fontweight="bold", fontsize=10)
+        ax.set_xlabel("Score")
+        ax.set_ylabel("Frequency")
+    fig.tight_layout()
+    fig.savefig(pca_fig_dir / "pc_histograms.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[FIGURE] Saved -> pca/pc_histograms.png")
+
+
+def save_pca_threshold_table(
+    figures_dir: Path,
+    cev: np.ndarray,
+    p: int,
+    subfolder: str = "pca",  
+) -> Path:
+    """Xuất bảng phân tích ngưỡng CEV dưới dạng hình ảnh."""
+    # ===== TẠO THƯ MỤC CON NẾU CÓ =====
+    if subfolder:
+        pca_fig_dir = figures_dir / subfolder
+    else:
+        pca_fig_dir = figures_dir
+    pca_fig_dir.mkdir(parents=True, exist_ok=True)
+    
+    out = pca_fig_dir / "pca_threshold_table.png" 
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.axis("off")
+
+    thr_data = []
+    for thr in [0.80, 0.85, 0.90, 0.95, 0.99]:
+        kt = int(np.argmax(cev >= thr)) + 1
+        thr_data.append([f"{thr*100:.0f}%", kt, f"{(1 - kt/p)*100:.1f}%", f"{cev[kt-1]*100:.2f}%"])
+
+    tbl = ax.table(cellText=thr_data, colLabels=["Ngưỡng CEV", "k", "Giảm chiều", "CEV thực"],
+                   cellLoc="center", loc="center", bbox=[0, 0, 1, 1])
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(11)
+
+    for (r, c), cell in tbl.get_celld().items():
+        if r == 0:
+            cell.set_facecolor("#1976D2")
+            cell.set_text_props(color="white", fontweight="bold")
+        elif r % 2 == 0:
+            cell.set_facecolor("#E3F2FD")
+
+    ax.set_title("Bảng phân tích ngưỡng CEV", fontweight="bold", fontsize=12, pad=15)
+    fig.tight_layout()
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[FIGURE] Saved -> pca/pca_threshold_table.png")
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────

@@ -232,6 +232,7 @@ def main():
         (5, "Train and evaluate LSTM models", "step_05_train_and_evaluate"),
         (6, "Export the selected LSTM model", "step_06_export_model"),
         (7, "Generate LSTM model summary report", "step_07_model_summary"),
+        (8, "Export figures to logs/figures/lstm", "step_08_export_figures"),
     ]
     
     # Verify all step files exist in the step directory

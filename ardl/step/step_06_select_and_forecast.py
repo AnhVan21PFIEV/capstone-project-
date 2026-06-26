@@ -71,4 +71,18 @@ def run(context: dict) -> dict:
     print("  MAPE_test =", f"{metrics['MAPE_test(%)']:.6f}")
     print("  R2_test   =", f"{metrics['R2_test']:.6f}")
     print("  Forecast  =", forecast_path)
+    
+    # Xuất CSV cho Chapter 4
+    chapter4_df = pd.DataFrame({
+        "Date": y_test.index,
+        "Actual_VNINDEX": y_test.values,
+        "Predicted_VNINDEX": pred_test.values,
+        "Residual": y_test.values - pred_test.values,
+        "APE_%": np.abs((y_test.values - pred_test.values) / (y_test.values + 1e-8)) * 100
+    })
+    
+    chapter4_path = context["PROJECT_ROOT"] / "outputs" / "ardl_vnindex_forecast" / "chapter4_ardl_forecast.csv"
+    chapter4_df.to_csv(chapter4_path, index=False)
+    print(f"Chapter 4 data saved to: {chapter4_path}")
+    context["chapter4_csv_path"] = chapter4_path
     return context
