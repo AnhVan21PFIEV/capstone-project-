@@ -21,7 +21,7 @@ def run(context: dict) -> dict:
     context.update({"seed": seed})
     
     # ===== TẠO THƯ MỤC logs/figures/ardl/ =====
-    figures_dir = Path("C:\\Users\\ADMIN\\Desktop\\CAPSTONE PROJECT\\logs\\figures\\ardl")
+    figures_dir = Path("E:\\code for vsc\\New folder\\capstone-project-\\logs\\figures\\ardl")
     figures_dir.mkdir(parents=True, exist_ok=True)
     context["figures_dir"] = figures_dir
     print(f" Figures directory: {figures_dir.resolve()}")

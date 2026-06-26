@@ -15,99 +15,78 @@ def run(context: dict) -> dict:
     metrics = context["metrics"]
     diag = context["diag"]
     
-    print("\n" + "="*80)
-    print(" TÓM TẮT MÔ HÌNH ARDL + PCA")
-    print("="*80)
+    print("\nTóm tắt mô hình ARDL:")
+    print("\n" + "="*90)
+    print("                            ARDL + PCA Regression Results")
+    print("="*90)
     
     # ===== 1. THÔNG TIN MÔ HÌNH =====
-    print("\n" + "-"*80)
-    print("THÔNG TIN MÔ HÌNH")
-    print("-"*80)
-    
     info_data = [
-        ["Mô hình", f"ARDL({selected_pair[0]}, {selected_pair[1]})"],
-        ["Biến phụ thuộc", "VNINDEX"],
-        ["Số quan sát (Train+Val)", len(context["y_trainval"])],
-        ["Số quan sát (Test)", len(context["y_test"])],
-        ["Số thành phần PCA (k)", len(context["pc_cols"])],
-        ["Số tham số", len(res.params)],
-        ["AIC", f"{res.aic:.4f}"],
-        ["BIC", f"{res.bic:.4f}"],
-        ["HQIC", f"{res.hqic:.4f}"],
+        ["Dep. Variable:", "VNINDEX", "No. Observations:", len(context["y_trainval"])],
+        ["Model:", f"ARDL({selected_pair[0]},{selected_pair[1]})+PCA", "Log Likelihood:", f"{res.llf:.3f}"],
+        ["Date:", pd.Timestamp.now().strftime("%a, %d %b %Y"), "AIC:", f"{res.aic:.3f}"],
+        ["Time:", pd.Timestamp.now().strftime("%H:%M:%S"), "BIC:", f"{res.bic:.3f}"],
+        ["Sample:", f"0 - {len(context['y_trainval'])-1}", "HQIC:", f"{res.hqic:.3f}"],
+        ["Covariance Type:", "nonrobust", "", ""]
     ]
     
-    print(tabulate(info_data, headers=["Chỉ tiêu", "Giá trị"], tablefmt="grid"))
-
+    print(tabulate(info_data, tablefmt="plain", numalign="left", stralign="left"))
     
     # ===== 2. HỆ SỐ HỒI QUY =====
-    print("\n" + "-"*80)
-    print("HỆ SỐ HỒI QUY")
-    print("-"*80)
+    print("\n" + "="*90)
+    print("                 coef    std err        t      P>|t|      [0.025      0.975]")
+    print("-"*90)
     
-    coef_data = []
+    # Lấy tên biến (loại bỏ khoảng trắng thừa)
     for idx, param in enumerate(res.params.index):
-        pval = res.pvalues.iloc[idx]
-        sig = "***" if pval < 0.01 else "**" if pval < 0.05 else "*" if pval < 0.1 else ""
-        coef_data.append([
-            param,
-            f"{res.params.iloc[idx]:.6f}",
-            f"{res.bse.iloc[idx]:.6f}",
-            f"{res.tvalues.iloc[idx]:.4f}",
-            f"{pval:.4f}",
-            sig
-        ])
+        param_name = param.strip()
+        coef_val = res.params.iloc[idx]
+        se_val = res.bse.iloc[idx]
+        t_val = res.tvalues.iloc[idx]
+        p_val = res.pvalues.iloc[idx]
+        ci_lower = coef_val - 1.96 * se_val
+        ci_upper = coef_val + 1.96 * se_val
+        
+        # Format theo đúng style của statsmodels
+        print(f"{param_name:>18} {coef_val:10.4f} {se_val:10.4f} {t_val:9.3f} {p_val:9.3f} {ci_lower:10.4f} {ci_upper:10.4f}")
     
-  
-        print(tabulate(coef_data, 
-                       headers=["Biến", "Hệ số", "Sai số chuẩn", "t-stat", "p-value", "Sig."],
-                       tablefmt="grid"))
-    
-    # ===== 3. HIỆU NĂNG DỰ BÁO =====
-    print("\n" + "-"*80)
-    print("HIỆU NĂNG DỰ BÁO")
-    print("-"*80)
-    
-    perf_data = [
-        ["RMSE", f"{metrics['RMSE_trainval']:.4f}", f"{metrics['RMSE_test']:.4f}"],
-        ["MAE", f"{metrics['MAE_trainval']:.4f}", f"{metrics['MAE_test']:.4f}"],
-        ["MAPE (%)", f"{metrics['MAPE_trainval(%)']:.4f}", f"{metrics['MAPE_test(%)']:.4f}"],
-        ["R²", f"{metrics['R2_trainval']:.4f}", f"{metrics['R2_test']:.4f}"],
-    ]
-    
-
-    print(tabulate(perf_data, headers=["Chỉ số", "Train+Val", "Test"], tablefmt="grid"))
-    # ===== 4. CHẨN ĐOÁN PHẦN DƯ =====
-    print("\n" + "-"*80)
-    print("CHẨN ĐOÁN PHẦN DƯ")
-    print("-"*80)
+    # ===== 3. THỐNG KÊ PHẦN DƯ =====
+    print("\n" + "="*90)
     
     # Lấy residuals từ context
     forecast_table = context.get("forecast_table")
     if forecast_table is not None and "Residual" in forecast_table.columns:
         resid = forecast_table["Residual"]
         resid_arr = np.array(resid.dropna())
-        print(f"  Số phần dư: {len(resid_arr)}")
-        print(f"  Trung bình phần dư: {np.mean(resid_arr):.6f}")
-        print(f"  Độ lệch chuẩn phần dư: {np.std(resid_arr):.6f}")
-        print(f"  Min phần dư: {np.min(resid_arr):.6f}")
-        print(f"  Max phần dư: {np.max(resid_arr):.6f}")
-        print()
+        
+        # Tính các thống kê phần dư
+        jb_stat = diag.get('JarqueBera', 0)
+        jb_p = diag.get('JB_pvalue', 0)
+        skew = diag.get('Skew', 0)
+        kurt = diag.get('Kurtosis', 0)
+        
+        # Lấy LB test từ diag (có thể được lưu từ step 9)
+        lb_q1 = diag.get('LjungBox_Q_L1', 0)
+        lb_p1 = diag.get('LjungBox_p_L1', 0)
+        
+        arch_stat = diag.get('ARCH_stat', 0)
+        arch_p = diag.get('ARCH_pvalue', 0)
+        
+        # In thống kê dạng mẫu
+        print(f"Ljung-Box (L1) (Q):       {lb_q1:>8.2f}        Jarque-Bera (JB):      {jb_stat:>8.2f}")
+        print(f"Prob(Q):                   {lb_p1:>8.3f}        Prob(JB):               {jb_p:>8.3f}")
+        print(f"ARCH LM:                   {arch_stat:>8.2f}        Prob(ARCH):             {arch_p:>8.3f}")
+        print(f"Skew:                      {skew:>8.3f}        Kurtosis:               {kurt:>8.3f}")
     
-    diag_data = [
-        ["Ljung-Box Q (lag 1)", f"{diag['LjungBox_Q_L1']:.4f}", f"{diag['LjungBox_p_L1']:.4f}"],
-        ["Ljung-Box Q (lag 10)", f"{diag['LjungBox_Q_L10']:.4f}", f"{diag['LjungBox_p_L10']:.4f}"],
-        ["Jarque-Bera", f"{diag['JarqueBera']:.4f}", f"{diag['JB_pvalue']:.4f}"],
-        ["Skewness", f"{diag['Skew']:.4f}", ""],
-        ["Kurtosis", f"{diag['Kurtosis']:.4f}", ""],
-        ["ARCH-LM (lag 5)", f"{diag['ARCH_stat']:.4f}", f"{diag['ARCH_pvalue']:.4f}"],
-    ]
+    # ===== 4. HIỆU NĂNG DỰ BÁO =====
+    print("\n" + "="*90)
+    print(f"RMSE Train+Validation : {metrics['RMSE_trainval']:.4f}")
+    print(f"RMSE Test             : {metrics['RMSE_test']:.4f}")
     
-    print(tabulate(diag_data, headers=["Kiểm định", "Thống kê", "p-value"], tablefmt="grid"))
-    
-    # ===== NHẬN XÉT TỔNG QUAN =====
-    print("\n" + "-"*80)
+    # ===== 5. NHẬN XÉT TỔNG QUAN =====
+    print("\n" + "="*90)
     print("NHẬN XÉT TỔNG QUAN")
-    print("-"*80)
+    print("-"*90)
     
     # Nhận xét về hiệu năng dự báo
     if metrics['MAPE_test(%)'] < 2:
@@ -155,8 +134,8 @@ def run(context: dict) -> dict:
         print("     Mô hình PCA-ARDL(5,2) có hiệu năng dự báo hạn chế trên tập test,")
         print("     cần xem xét các mô hình phi tuyến như LSTM để cải thiện.")
     
-    print("\n" + "="*80)
+    print("\n" + "="*90)
     print(" Tóm tắt mô hình ARDL hoàn tất!")
-    print("="*80 + "\n")
+    print("="*90 + "\n")
     
     return context

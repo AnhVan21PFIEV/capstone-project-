@@ -65,24 +65,73 @@ try:
 except Exception:
     dropout_rate = 'N/A'
 
-# Architecture
+# ===== SỬA PHẦN LẤY ARCHITECTURE =====
 arch_rows = []
 try:
-    for l in selected_model.layers:
-        name = l.__class__.__name__
+    if selected_model is not None:
+        # Đảm bảo model đã được build
+        # Lấy thông tin các layer
+        for i, layer in enumerate(selected_model.layers):
+            # Lấy tên layer
+            layer_name = layer.__class__.__name__
+            
+            # Lấy output shape
+            try:
+                if hasattr(layer, 'output_shape'):
+                    out_shape = layer.output_shape
+                    # Chuyển đổi None thành '?' để dễ đọc
+                    if out_shape is not None:
+                        if isinstance(out_shape, tuple):
+                            # Xử lý tuple có None
+                            out_shape_str = str(tuple('?' if dim is None else dim for dim in out_shape))
+                        else:
+                            out_shape_str = str(out_shape)
+                    else:
+                        out_shape_str = 'unknown'
+                elif hasattr(layer, 'output'):
+                    out_shape = layer.output.shape
+                    out_shape_str = str(tuple('?' if dim is None else dim for dim in out_shape))
+                else:
+                    out_shape_str = 'unknown'
+            except Exception:
+                out_shape_str = 'unknown'
+            
+            # Lấy số tham số
+            try:
+                params = layer.count_params()
+            except Exception:
+                params = 'N/A'
+            
+            arch_rows.append((layer_name, out_shape_str, params))
+        
+        # Lấy tổng tham số
         try:
-            out_shape = l.output_shape
-        except Exception:
-            out_shape = 'unknown'
+            total_params = selected_model.count_params()
+        except:
+            total_params = 'N/A'
+            
         try:
-            params = l.count_params()
-        except Exception:
-            params = 'N/A'
-        arch_rows.append((name, out_shape, params))
-    total_params = selected_model.count_params()
-    trainable_params = int(sum([K.count_params(w) for w in selected_model.trainable_weights]))
-    non_trainable_params = int(total_params - trainable_params)
-except Exception:
+            trainable_params = int(sum([K.count_params(w) for w in selected_model.trainable_weights]))
+        except:
+            trainable_params = 'N/A'
+            
+        try:
+            if isinstance(total_params, (int, float)):
+                if isinstance(trainable_params, (int, float)):
+                    non_trainable_params = int(total_params - trainable_params)
+                else:
+                    non_trainable_params = 'N/A'
+            else:
+                non_trainable_params = 'N/A'
+        except:
+            non_trainable_params = 'N/A'
+    else:
+        arch_rows = []
+        total_params = 'N/A'
+        trainable_params = 'N/A'
+        non_trainable_params = 'N/A'
+except Exception as e:
+    print(f"Warning: Could not retrieve model architecture: {e}")
     arch_rows = []
     total_params = 'N/A'
     trainable_params = 'N/A'
@@ -145,9 +194,10 @@ print('Learning Rate       :', lr_text)
 print('\n' + dash)
 print('MODEL ARCHITECTURE')
 print(dash)
-print(f"{'Layer (Type)':25} {'Output Shape':25} {'Param #':10}")
+print(f"{'Layer (Type)':35} {'Param #':15}")
 for name, out_shape, params in arch_rows:
-    print(f"{name:25} {str(out_shape):25} {str(params):10}")
+    # Định dạng để hiển thị đẹp, bỏ out_shape
+    print(f"{name:35} {str(params):15}")
 print('\n' + dash)
 print('Total Parameters          :', total_params)
 print('Trainable Parameters      :', trainable_params)
