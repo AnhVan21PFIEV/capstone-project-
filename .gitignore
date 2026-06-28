@@ -62,3 +62,4 @@ ardl_vnindex_report/*.json
 readme
 vnindex_edq.py
 lstm_forecast_plot.png
+outputs_no_PCA/
