@@ -13,6 +13,7 @@ cd <project_folder>
 ```
 ### 2. Tạo thư mục data ở project_folder
 ```bash
+mkdir data
 cd data
 mkdir raw # bỏ Data_VNINDEX.csv vào đây (398 mã)
 mkdir processed
