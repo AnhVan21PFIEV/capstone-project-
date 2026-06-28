@@ -35,7 +35,7 @@ cd src
 python src/run_all.py --config config/config.yaml
 ```
 
-### 5. ARDL
+### 4. ARDL
 
 ```bash
 cd ardl
