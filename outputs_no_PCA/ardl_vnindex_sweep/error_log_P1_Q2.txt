@@ -1,0 +1,6 @@
+P=1, Q=2
+Error type: ValueError
+Error message: The number of regressors (956) including deterministics, lags of the endog, lags of the exogenous, and fixed regressors is larger than the sample available for estimation (699).
+Expected parameters: 956
+Features: 318
+Train samples: 701
