@@ -367,7 +367,7 @@ def run_pca_pipeline(project_root: Path, config_path: Path) -> None:
 
     print(f"[PCA INPUT] Train: {X_train.shape} | Val: {X_val.shape} | Test: {X_test.shape}")
 
-    # ── Fit full PCA (chỉ trên train) ─────────────────────────────
+    # ── Fit full PCA  ─────────────────────────────
     rs         = int(pca_cfg.get("random_state", 42))
     pca_full   = PCA(n_components=None, random_state=rs)
     pca_full.fit(X_train)
@@ -479,7 +479,7 @@ def run_pca_pipeline(project_root: Path, config_path: Path) -> None:
         pickle.dump(pca_final, f)
     print(f"[SAVED] pca_model.pkl")
 
-        # ── Figures ───────────────────────────────────────────────────
+    # ── Figures ───────────────────────────────────────────────────
     save_pca_figure(
         explained_var=ev,
         cum_explained_var=cev,
@@ -492,6 +492,14 @@ def run_pca_pipeline(project_root: Path, config_path: Path) -> None:
         test_index=test_scaled.index,
         loadings=loadings,
         output_path=figures_dir / "pca_summary.png",
+        subfolder="pca",
+    )
+
+    # ── Scree Plot riêng ───────────────────────────────────────────
+    save_scree_plot_figure(
+        figures_dir=figures_dir,
+        explained_var=ev,
+        k_optimal=k_optimal,
         subfolder="pca",
     )
 
@@ -509,22 +517,6 @@ def run_pca_pipeline(project_root: Path, config_path: Path) -> None:
         cev=cev,
         p=p,
     )
-    
-    # ── PCA individual figures ──────────────────────────────────
-    save_pca_individual_figures(
-        figures_dir=figures_dir,
-        loadings=loadings,
-        explained_var=ev,
-        train_pca=train_pca,
-        train_index=train_scaled.index,
-    )
-
-    save_pca_threshold_table(
-        figures_dir=figures_dir,
-        cev=cev,
-        p=p,
-    )
-
     # ── PC Time Series riêng biệt ────────────────────
     try:
         from preprocess_steps import save_pc_time_series_individual
@@ -709,7 +701,75 @@ def save_pca_threshold_table(
     print(f"[FIGURE] Saved -> pca/pca_threshold_table.png")
     return out
 
-
+def save_scree_plot_figure(
+    figures_dir: Path,
+    explained_var: np.ndarray,
+    k_optimal: int,
+    subfolder: str = "pca",
+) -> Path:
+    """
+    Xuất RIÊNG biểu đồ Scree Plot (dạng đường gấp khúc).
+    """
+    if subfolder:
+        save_dir = figures_dir / subfolder
+    else:
+        save_dir = figures_dir
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
+    out = save_dir / "scree_plot.png"
+    n = len(explained_var)
+    n_show = min(50, n)
+    
+    print(f"[DEBUG] Đang vẽ Scree Plot với n={n_show}, k={k_optimal}, lưu vào {out}")
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    # Vẽ Scree Plot dạng LINE (đường gấp khúc) 
+    ax.plot(range(1, n_show+1), explained_var[:n_show]*100, 
+            marker='o', 
+            markersize=6,
+            color='#1565C0', 
+            linewidth=2, 
+            markerfacecolor='#1565C0',
+            markeredgecolor='white',
+            markeredgewidth=1)
+    
+    # Đánh dấu đường thẳng đứng tại k_optimal
+    ax.axvline(k_optimal, color='red', linestyle='--', linewidth=2,
+               label=f'k={k_optimal} (CEV≥95%)')
+    
+    # Đánh dấu điểm tại k_optimal
+    if k_optimal <= n_show:
+        ax.scatter(k_optimal, explained_var[k_optimal-1]*100, 
+                   color='red', s=120, zorder=5, 
+                   edgecolor='white', linewidth=2)
+    
+    # Format
+    ax.set_xlabel('Component Number', fontsize=12)
+    ax.set_ylabel('Eigenvalue', fontsize=12)
+    ax.set_title('Scree Plot - Giá trị riêng theo từng thành phần chính', 
+                 fontweight='bold', fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='upper right')
+    
+    # Thêm annotation
+    cum_var = np.cumsum(explained_var)[k_optimal-1] * 100
+    ax.text(0.02, 0.95, 
+            f'k={k_optimal} → CEV={cum_var:.2f}% | '
+            f'Giảm {(1-k_optimal/len(explained_var))*100:.1f}% chiều',
+            transform=ax.transAxes,
+            fontsize=11,
+            verticalalignment='top',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    
+    fig.tight_layout()
+    fig.savefig(out, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    
+    print(f'[FIGURE] ĐÃ LƯU Scree Plot: {out}')
+    print(f'[FIGURE] File tồn tại? {out.exists()}')
+    
+    return out
 # ─────────────────────────────────────────────────────────────────
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="VN-Index PCA pipeline")
